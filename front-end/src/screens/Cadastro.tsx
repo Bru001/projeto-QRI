@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -18,17 +18,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Input from '../components/ui/Input';
 import { Loading } from '../components/ui/loading';
 
+// Importe seus novos componentes de botão
 import { BotaoFacebook } from '../components/ui/BotaoFacebook';
 import { BotaoGoogle } from '../components/ui/BotaoGoogle';
 
 // ===== TIPOS =====
-type SocialButtonProps = {
-  icon: any;
-  label: string;
-  onPress: () => void;
-  loading?: boolean;
-};
-
 type FormInputProps = {
   label: string;
   error?: string;
@@ -41,29 +35,7 @@ type FormInputProps = {
   autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
 };
 
-// ===== COMPONENTES REUTILIZÁVEIS =====
-const SocialButton: React.FC<SocialButtonProps> = React.memo(({
-  icon,
-  label,
-  onPress,
-  loading = false,
-}) => (
-  <TouchableOpacity
-    style={[styles.socialButton, loading && styles.buttonDisabled]}
-    accessibilityLabel={label}
-    accessibilityRole="button"
-    activeOpacity={0.7}
-    onPress={onPress}
-    disabled={loading}
-  >
-    {loading ? (
-      <ActivityIndicator size="small" color="#000" />
-    ) : (
-      <Image source={icon} style={styles.socialIcon} />
-    )}
-  </TouchableOpacity>
-));
-
+// ===== COMPONENTE REUTILIZÁVEL =====
 const FormInput: React.FC<FormInputProps> = React.memo(({
   label,
   error,
@@ -96,26 +68,34 @@ const FormInput: React.FC<FormInputProps> = React.memo(({
 ));
 
 // ===== COMPONENTE PRINCIPAL =====
-export default function LoginScreen({ navigation }: any) {
+export default function Cadastro({ navigation }: any) {
   const { width, height } = useWindowDimensions();
-
+  
   // Cálculos responsivos
   const isSmall = height < 700;
   const isLarge = height > 800;
-
+  
   // Estados
+  const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [senha, setSenha] = useState('');
+  const [confirmarSenha, setConfirmarSenha] = useState('');
+  
+  // Estados de erro
+  const [nomeError, setNomeError] = useState('');
   const [emailError, setEmailError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
+  const [senhaError, setSenhaError] = useState('');
+  const [confirmarSenhaError, setConfirmarSenhaError] = useState('');
+  
+  // Estados de loading
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [facebookLoading, setFacebookLoading] = useState(false);
-
+  
   // Animações
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
-
+  
   // Configurações responsivas
   const layoutStyles = {
     container: {
@@ -123,27 +103,61 @@ export default function LoginScreen({ navigation }: any) {
       paddingBottom: isSmall ? 30 : isLarge ? 50 : 40,
     },
     logo: {
-      width: isSmall ? 100 : isLarge ? 150 : 130,
-      height: isSmall ? 100 : isLarge ? 150 : 130,
+      width: isSmall ? 90 : isLarge ? 140 : 120,
+      height: isSmall ? 90 : isLarge ? 140 : 120,
     },
     title: {
       fontSize: isSmall ? 26 : isLarge ? 34 : 30,
       marginBottom: isSmall ? 20 : isLarge ? 30 : 25,
     },
-    loginButton: {
+    cadastroButton: {
       height: isSmall ? 50 : isLarge ? 60 : 55,
       marginTop: isSmall ? 20 : isLarge ? 30 : 25,
     },
-    cadastroLink: {
+    loginLink: {
       marginTop: isSmall ? 15 : isLarge ? 25 : 20,
+    },
+    socialButtons: {
+      marginTop: isSmall ? 15 : isLarge ? 25 : 20,
+      marginBottom: isSmall ? 15 : isLarge ? 25 : 20,
     }
   };
-
-  // Verificar login automático
+  
+  // Validação em tempo real
   useEffect(() => {
-    verificarLogin();
-
-    // Animar entrada
+    if (nome && nome.length < 2) {
+      setNomeError('Nome deve ter pelo menos 2 caracteres');
+    } else {
+      setNomeError('');
+    }
+  }, [nome]);
+  
+  useEffect(() => {
+    if (email && !validateEmail(email)) {
+      setEmailError('Digite um e-mail válido');
+    } else {
+      setEmailError('');
+    }
+  }, [email]);
+  
+  useEffect(() => {
+    if (senha && senha.length < 6) {
+      setSenhaError('Senha deve ter pelo menos 6 caracteres');
+    } else {
+      setSenhaError('');
+    }
+  }, [senha]);
+  
+  useEffect(() => {
+    if (confirmarSenha && senha !== confirmarSenha) {
+      setConfirmarSenhaError('As senhas não coincidem');
+    } else {
+      setConfirmarSenhaError('');
+    }
+  }, [confirmarSenha, senha]);
+  
+  // Animação de entrada
+  useEffect(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -157,102 +171,131 @@ export default function LoginScreen({ navigation }: any) {
       }),
     ]).start();
   }, []);
-
-  // Validação em tempo real do email
-  useEffect(() => {
-    if (email && !validateEmail(email)) {
-      setEmailError('Digite um e-mail válido');
-    } else {
-      setEmailError('');
-    }
-  }, [email]);
-
-  // Validação em tempo real da senha
-  useEffect(() => {
-    if (password && password.length < 3) {
-      setPasswordError('Senha muito curta');
-    } else {
-      setPasswordError('');
-    }
-  }, [password]);
-
-  // Funções
-  async function verificarLogin() {
-    try {
-      const user = await AsyncStorage.getItem('usuario');
-      if (user) {
-        navigation.replace('Home');
-      }
-    } catch (error) {
-      console.error('Erro ao verificar login:', error);
-    }
-  }
-
+  
   function validateEmail(value: string) {
     const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     return regex.test(value);
   }
-
-  const handleLogin = useCallback(async () => {
+  
+  const handleCadastro = useCallback(async () => {
     // Reset erros
+    setNomeError('');
     setEmailError('');
-    setPasswordError('');
-
+    setSenhaError('');
+    setConfirmarSenhaError('');
+    
     // Validações
-    if (!email) {
+    let hasError = false;
+    
+    if (!nome.trim()) {
+      setNomeError('Nome é obrigatório');
+      hasError = true;
+    } else if (nome.length < 2) {
+      setNomeError('Nome muito curto');
+      hasError = true;
+    }
+    
+    if (!email.trim()) {
       setEmailError('E-mail é obrigatório');
-      return;
-    }
-
-    if (!password) {
-      setPasswordError('Senha é obrigatória');
-      return;
-    }
-
-    if (!validateEmail(email)) {
+      hasError = true;
+    } else if (!validateEmail(email)) {
       setEmailError('Digite um e-mail válido');
-      return;
+      hasError = true;
     }
-
+    
+    if (!senha) {
+      setSenhaError('Senha é obrigatória');
+      hasError = true;
+    } else if (senha.length < 6) {
+      setSenhaError('Senha deve ter pelo menos 6 caracteres');
+      hasError = true;
+    }
+    
+    if (!confirmarSenha) {
+      setConfirmarSenhaError('Confirme sua senha');
+      hasError = true;
+    } else if (senha !== confirmarSenha) {
+      setConfirmarSenhaError('As senhas não coincidem');
+      hasError = true;
+    }
+    
+    if (hasError) return;
+    
     setLoading(true);
-
-    // Simular requisição
+    
     setTimeout(async () => {
       try {
-        if (email === 'bruno@gmail.com' && password === '123') {
-          await AsyncStorage.setItem('usuario', JSON.stringify({ email }));
-          navigation.replace('Home');
-        } else {
-          Alert.alert('Erro', 'E-mail ou senha inválidos');
+        // Verificar se o usuário já existe
+        const usuariosExistentes = await AsyncStorage.getItem('usuarios');
+        let usuarios = usuariosExistentes ? JSON.parse(usuariosExistentes) : [];
+        
+        // Verificar se email já está cadastrado
+        const emailExistente = usuarios.find((u: any) => u.email === email);
+        if (emailExistente) {
+          Alert.alert('Erro', 'Este e-mail já está cadastrado');
+          setLoading(false);
+          return;
         }
+        
+        // Criar novo usuário
+        const novoUsuario = {
+          id: Date.now().toString(),
+          nome: nome.trim(),
+          email: email.toLowerCase().trim(),
+          senha, // Em produção, criptografe a senha!
+          dataCadastro: new Date().toISOString(),
+        };
+        
+        // Adicionar ao array de usuários
+        usuarios.push(novoUsuario);
+        await AsyncStorage.setItem('usuarios', JSON.stringify(usuarios));
+        
+        // Salvar como usuário logado
+        await AsyncStorage.setItem('usuario', JSON.stringify({ 
+          email: email.toLowerCase().trim(), 
+          nome: nome.trim() 
+        }));
+        
+        Alert.alert(
+          'Sucesso!',
+          'Cadastro realizado com sucesso!',
+          [
+            { 
+              text: 'OK', 
+              onPress: () => navigation.replace('Home') 
+            }
+          ]
+        );
+        
       } catch (error) {
-        Alert.alert('Erro', 'Ocorreu um erro ao fazer login');
+        console.error('Erro no cadastro:', error);
+        Alert.alert('Erro', 'Ocorreu um erro ao cadastrar. Tente novamente.');
       } finally {
         setLoading(false);
       }
-    }, 1200);
-  }, [email, password, navigation]);
-
-  const handleGoogleLogin = useCallback(async () => {
+    }, 1500);
+  }, [nome, email, senha, confirmarSenha, navigation]);
+  
+  const handleGoogleCadastro = useCallback(async () => {
     setGoogleLoading(true);
     setTimeout(() => {
-      Alert.alert('Info', 'Login com Google em desenvolvimento');
+      Alert.alert('Info', 'Cadastro com Google em desenvolvimento');
       setGoogleLoading(false);
     }, 1000);
   }, []);
-
-  const handleFacebookLogin = useCallback(async () => {
+  
+  const handleFacebookCadastro = useCallback(async () => {
     setFacebookLoading(true);
     setTimeout(() => {
-      Alert.alert('Info', 'Login com Facebook em desenvolvimento');
+      Alert.alert('Info', 'Cadastro com Facebook em desenvolvimento');
       setFacebookLoading(false);
     }, 1000);
   }, []);
-
+  
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 60 : 0}
       style={{ flex: 1, backgroundColor: '#FF0000' }}
     >
       <ScrollView
@@ -261,9 +304,9 @@ export default function LoginScreen({ navigation }: any) {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <Animated.View
+        <Animated.View 
           style={[
-            styles.container,
+            styles.container, 
             layoutStyles.container,
             {
               opacity: fadeAnim,
@@ -284,12 +327,24 @@ export default function LoginScreen({ navigation }: any) {
           {/* Título */}
           <View style={styles.titleContainer}>
             <Text style={[styles.title, layoutStyles.title]}>
-              Login
+              Cadastro
             </Text>
           </View>
 
           {/* Formulário */}
           <View style={styles.formContainer}>
+            {/* Input Nome */}
+            <FormInput
+              label="Nome"
+              value={nome}
+              onChangeText={setNome}
+              placeholder="Seu nome completo"
+              error={nomeError}
+              placeholderTextColor="#ffffff99"
+              autoCapitalize="words"
+            />
+
+            {/* Input E-mail */}
             <FormInput
               label="E-mail"
               value={email}
@@ -301,77 +356,86 @@ export default function LoginScreen({ navigation }: any) {
               autoCapitalize="none"
             />
 
+            {/* Input Senha */}
             <FormInput
               label="Senha"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="********"
+              value={senha}
+              onChangeText={setSenha}
+              placeholder="Mínimo 6 caracteres"
               secureTextEntry
-              error={passwordError}
+              error={senhaError}
               placeholderTextColor="#ffffff99"
               autoCapitalize="none"
             />
 
-            <TouchableOpacity
-              style={styles.forgotContainer}
-              accessibilityLabel="Recuperar senha"
-              accessibilityRole="button"
-              activeOpacity={0.7}
-            >
-              <Text style={styles.forgotText}>Esqueci minha senha</Text>
-            </TouchableOpacity>
+            {/* Input Confirmar Senha */}
+            <FormInput
+              label="Confirmar Senha"
+              value={confirmarSenha}
+              onChangeText={setConfirmarSenha}
+              placeholder="Digite a senha novamente"
+              secureTextEntry
+              error={confirmarSenhaError}
+              placeholderTextColor="#ffffff99"
+              autoCapitalize="none"
+            />
 
-            <View style={styles.dividerContainer}>
+            {/* Divisor "ou" */}
+            <View style={[styles.dividerContainer, { marginTop: 5 }]}>
               <View style={styles.dividerLine} />
               <Text style={styles.dividerText}>ou</Text>
               <View style={styles.dividerLine} />
             </View>
 
-            <View style={{ justifyContent: "center", alignItems: "center" }}>
+            {/* Botões sociais - NOVOS COMPONENTES */}
+            <View style={[styles.socialButtonsContainer, layoutStyles.socialButtons]}>
               <BotaoFacebook
-                onPress={handleFacebookLogin}
+                onPress={handleFacebookCadastro}
                 loading={facebookLoading}
+                label="Continua com Facebook"
               />
-
+              
               <View style={{ height: 12 }} />
-
+              
               <BotaoGoogle
-                onPress={handleGoogleLogin}
+                onPress={handleGoogleCadastro}
                 loading={googleLoading}
+                label="Continua com Google"
               />
             </View>
           </View>
 
+          {/* Botão Cadastrar */}
           <TouchableOpacity
             style={[
-              styles.loginButton,
-              layoutStyles.loginButton,
+              styles.cadastroButton,
+              layoutStyles.cadastroButton,
               loading && styles.buttonDisabled,
             ]}
-            onPress={handleLogin}
+            onPress={handleCadastro}
             disabled={loading}
-            accessibilityLabel="Fazer login"
+            accessibilityLabel="Cadastrar conta"
             accessibilityRole="button"
             activeOpacity={0.8}
           >
             {loading ? (
               <Loading color="#fff" />
             ) : (
-              <Text style={styles.loginButtonText}>Entrar</Text>
+              <Text style={styles.cadastroButtonText}>Cadastrar</Text>
             )}
           </TouchableOpacity>
 
-          {/* Criar conta */}
-          <View style={[styles.signupContainer, layoutStyles.cadastroLink]}>
-            <Text style={styles.signupText}>
-              Não tem conta?{' '}
+          {/* Já tem conta? */}
+          <View style={[styles.loginContainer, layoutStyles.loginLink]}>
+            <Text style={styles.loginText}>
+              Já tem conta?{' '}
               <Text
-                style={styles.signupLink}
-                onPress={() => navigation.navigate('Cadastro')}
-                accessibilityLabel="Criar nova conta"
+                style={styles.loginLink}
+                onPress={() => navigation.navigate('Login')}
+                accessibilityLabel="Fazer login"
                 accessibilityRole="link"
               >
-                Criar agora
+                Fazer login!
               </Text>
             </Text>
           </View>
@@ -393,11 +457,11 @@ const styles = StyleSheet.create({
 
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 10,
+    marginBottom: 5,
   },
 
   logo: {
-    marginBottom: 5,
+    marginBottom: 0,
   },
 
   titleContainer: {
@@ -414,7 +478,7 @@ const styles = StyleSheet.create({
 
   formContainer: {
     width: '100%',
-    marginBottom: 5,
+    marginBottom: 10,
   },
 
   inputGroup: {
@@ -437,6 +501,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#ffffff44',
     width: '100%',
+    height: 48,
   },
 
   inputError: {
@@ -446,8 +511,9 @@ const styles = StyleSheet.create({
 
   inputText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 15,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
+    paddingHorizontal: 12,
   },
 
   errorText: {
@@ -458,24 +524,10 @@ const styles = StyleSheet.create({
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 
-  forgotContainer: {
-    alignSelf: 'flex-end',
-    marginBottom: 25,
-    padding: 8,
-  },
-
-  forgotText: {
-    color: '#fff',
-    fontSize: 13,
-    opacity: 0.9,
-    fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
-  },
-
   dividerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 25,
-    marginTop: 10,
+    marginVertical: 15,
     width: '100%',
   },
 
@@ -486,41 +538,19 @@ const styles = StyleSheet.create({
   },
 
   dividerText: {
-    marginHorizontal: 15,
+    marginHorizontal: 12,
     color: '#fff',
     fontSize: 12,
     opacity: 0.8,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 
-  socialContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 20,
-    marginTop: 10,
+  socialButtonsContainer: {
     width: '100%',
-  },
-
-  socialButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: '#fff',
     alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
   },
 
-  socialIcon: {
-    width: 24,
-    height: 24,
-  },
-
-  loginButton: {
+  cadastroButton: {
     backgroundColor: '#000',
     borderRadius: 14,
     alignItems: 'center',
@@ -538,25 +568,25 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
 
-  loginButtonText: {
+  cadastroButtonText: {
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 
-  signupContainer: {
+  loginContainer: {
     width: '100%',
     alignItems: 'center',
   },
 
-  signupText: {
+  loginText: {
     color: '#fff',
     fontSize: 14,
     fontFamily: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
 
-  signupLink: {
+  loginLink: {
     color: '#fff',
     fontWeight: '700',
     textDecorationLine: 'underline',

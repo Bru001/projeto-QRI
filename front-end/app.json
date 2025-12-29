@@ -1,16 +1,14 @@
 {
   "expo": {
-    "name": "QR Tech",
-    "slug": "QR Tech",
-    "version": "1.0.0",
+    "name": "QRI",
+    "slug": "QR-Tech",
+    "version": "1.0.1",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#4a66e6"
+      "backgroundColor": "#FF0000",
+      "image": "./assets/splash-transparent.png"
     },
     "ios": {
       "supportsTablet": true
@@ -18,12 +16,21 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#4a66e6"
+        "backgroundColor": "#ff0000"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "package": "com.bruno_nunes.QRTech"
     },
     "web": {
       "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-asset"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "e85daf3c-3c46-4322-87d4-68aa36a0a393"
+      }
     }
   }
 }
